@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator, SymmetricalLogLocator
 from math import e, exp, copysign
 import numpy as np
-from patsy.state import scale
+# from patsy.state import scale
 from scipy.cluster.hierarchy import average
 from scipy.stats import norm, skewnorm, johnsonsu
 from scipy.optimize import minimize

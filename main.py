@@ -1,4 +1,5 @@
 import pandas as pd
+import psycopg2
 import os
 from create_tables import *
 from gen_fix_table import gen_fix_table_split, gen_fix_table # split - с генерацией индивидуальных коэффициентов для положительных и отрицательных значений
@@ -15,6 +16,10 @@ main_table = "fin_data"
 name = "fin" # Для идентификации при создании отличающихся друг от друга таблиц
 # (если отличаются только: год, оквэд, то менять параметр не обязательно, а вот если меняли код в скрипте, то лучше это обозначить в названии)
 main_code = "1600" # 1600 для gen_fix_table и 1600p для gen_fix_table_split
+
+name_year_parm = None
+# name_year_parm = ["fin", 2019] # Требуется существование table_fix соответствующего года. Можно отключить, указав None
+# ВАЖНО: советую явно обозначить использование данного параметра в "name", поскольку он автоматически не подставляется в название
 
 to_do_list = {
     "fix"   : True, # Таблица без выбросов, с починенными положительными/отрицательными значениями
@@ -45,15 +50,18 @@ def vacuum_full_table (table):
         cursor_v.close()
         connection_v.close()
 
-def get_split_codes (year):
+def get_actual_codes (year):
     cur.execute(f"""
         SELECT DISTINCT jsonb_object_keys(data) AS key
         FROM {name}_{year}_fix;
     """)
 
-    codes_split = [a[0] for a in cur.fetchall()]
-    codes_split.sort()
-    return codes_split
+    codes_actual = [a[0] for a in cur.fetchall()]
+    codes_actual.sort()
+    if all(str(x).lstrip("-").isdigit() for x in codes_actual):
+        codes_actual = [int(x) for x in codes_actual]
+
+    return codes_actual
 
 db_config = {}
 with open("db_config.txt", "r") as file:
@@ -91,19 +99,25 @@ if to_do_list["koefs"]:
     if not os.path.isdir("koefs"):
         os.mkdir("koefs")
 
-    codes_split = get_split_codes(year)
+    codes_actual = get_actual_codes(year)
 
-    koefs = gen_koefs_csv(year, codes_split, main_code, name)
+    koefs = gen_koefs_csv(year, codes_actual, main_code, name, name_year_parm)
+    koefs = koefs.set_index("code")
 
 # ======== clean - no main_code =======
 if to_do_list["clean"]:
     drop_clean_table(year, name)
     if not to_do_list["koefs"]:
-        codes_split = get_split_codes(year)
-        koefs = pd.read_csv(f"koefs/{name}_c{main_code}_MNK_factors_y{year}.csv")
+        codes_actual = get_actual_codes(year)
+        if name_year_parm:
+            koefs = pd.read_csv(f"koefs/{name}_c{main_code}_MNK_factors_y{year}-{name_year_parm[1]}.csv")
+        else:
+            koefs = pd.read_csv(f"koefs/{name}_c{main_code}_MNK_factors_y{year}.csv")
+        koefs = koefs.set_index("code")
 
     create_clean_table(year, name)
-    gen_clean_table(year, main_code, codes_split, koefs, name)
+    # gen_clean_table(year, main_code, codes_actual, koefs, name, name_year_parm)
+    gen_clean_table(year, main_code, codes_actual, koefs, name, name_year_parm)
     vacuum_full_table(f"{name}_{year}_clean")
 
 # ========= corrs and counts =======
@@ -113,7 +127,8 @@ if to_do_list["corrs"]:
 
     gen_corrs_csv(year, codes, name)
 
-print(" Drop tables ".center(60, "="))
+if any([drop_tables_at_end[key] for key in drop_tables_at_end]):
+    print(" Drop tables ".center(60, "="))
 for key in drop_tables_at_end:
     if drop_tables_at_end[key]:
         key = "" if key == "pure" else key

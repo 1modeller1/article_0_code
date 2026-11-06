@@ -3,3 +3,6 @@ __*
 *check*
 corrs
 koefs
+.venv
+.idea
+.git

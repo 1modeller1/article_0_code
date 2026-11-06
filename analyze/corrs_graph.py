@@ -49,7 +49,7 @@ def graph_0 ():
         "no blows, clean"
                ], markerscale=4)
 
-def grapl_1 ():
+def graph_1 ():
     df0 = pd.read_csv("../corrs/corrs_y2020_clean.csv")
     x0, y0 = get_x_y(df0)
     ax.scatter(x0, y0, s=2, zorder=20, color = "black")
@@ -67,9 +67,25 @@ def grapl_1 ():
     ],
         markerscale=4)
 
-grapl_1()
+def graph_2 ():
+    df0 = pd.read_csv("../corrs/fin_corrs_y2020_fix.csv")
+    df1 = pd.read_csv("../corrs/fin_corrs_y2020_clean.csv")
+    df2 = pd.read_csv("../corrs/fin_p2019_corrs_y2020_clean.csv")
+
+    l = [df0, df1, df2]
+    for i in l:
+        x, y = get_x_y(i)
+        ax.scatter(x, y, s=2)
+
+    ax.legend([
+        "Корреляции при log(значение)",
+        "При log(значение) - b * log(активы)",
+        "При log(значение) - b * log(активы прошлого года)"
+    ], markerscale=4)
+
+graph_2()
 
 plt.xticks(np.arange(0, 101, 10), [str(i) + '%' for i in range(0, 101, 10)])
 
-plt.savefig("Сравнение корреляций в разных секторах.png", dpi=150)
-# plt.show()
+# plt.savefig("Сравнение корреляций в разных секторах.png", dpi=150)
+plt.show()
