@@ -1,0 +1,124 @@
+import pandas as pd
+import os
+from create_tables import *
+from gen_fix_table import gen_fix_table_split, gen_fix_table # split - с генерацией индивидуальных коэффициентов для положительных и отрицательных значений
+from gen_koefs_csv import gen_koefs_csv
+from gen_clean_table import gen_clean_table
+from gen_corrs_csv import gen_corrs_csv
+
+# ===============================
+
+year = 2020
+okved = "" # При пустом значении берутся все ОКВЭД, если заполнять, то более низкоуровневые оквэд войдут в группу более высокого уровня
+# Например: ОКВЭД "01" включит в себя ОКВЭДы: "01", "01.1", "01.11.2"
+main_table = "fin_data"
+name = "fin" # Для идентификации при создании отличающихся друг от друга таблиц
+# (если отличаются только: год, оквэд, то менять параметр не обязательно, а вот если меняли код в скрипте, то лучше это обозначить в названии)
+main_code = "1600" # 1600 для gen_fix_table и 1600p для gen_fix_table_split
+
+to_do_list = {
+    "fix"   : True, # Таблица без выбросов, с починенными положительными/отрицательными значениями
+    "koefs" : True,  # По методу наименьших квадратов генерируются коэффициенты a и b для уравнений code = a + b * main_code
+    "clean" : True,  # Мера влияния main_code на каждый code вычитается: code_clean = code - b * main_code
+    "corrs" : True   # Парные корреляции между каждыми двумя code_clean
+}
+
+drop_tables_at_end = {
+    "pure" : False,  # Создается в начале для более быстрой обработки следующей таблицы (сырые данные)
+    "fix"  : False,  # Содержит очищенные от выбросов и неправильных знаков данные
+    "clean" : False  # Содержит очищенные от влияния main_code данные
+}
+
+# ===============================
+name = f"{name}_{okved}"
+name = name.rstrip("_")
+
+def vacuum_full_table (table):
+    connection_v = psycopg2.connect(**db_config)
+    connection_v.autocommit = True
+    cursor_v = connection_v.cursor()
+    try:
+        cursor_v.execute(f"vacuum full {table}")
+    except Exception as e:
+        print(f"Failed vacuum full {table} : {e}")
+    finally:
+        cursor_v.close()
+        connection_v.close()
+
+def get_split_codes (year):
+    cur.execute(f"""
+        SELECT DISTINCT jsonb_object_keys(data) AS key
+        FROM {name}_{year}_fix;
+    """)
+
+    codes_split = [a[0] for a in cur.fetchall()]
+    codes_split.sort()
+    return codes_split
+
+db_config = {}
+with open("db_config.txt", "r") as file:
+    for line in file:
+        line = line.strip()
+        if not line: continue
+        key, value= line.split('=', 1)
+        db_config[key] = value
+
+if okved == "":
+    create_fin_table(year, main_table, name)
+else:
+    create_fin_table_with_okved(year, main_table, name, okved)
+
+codes = pd.read_csv("counts.csv")
+codes = codes[codes["count"] > 10_000]
+codes = codes["code"].tolist()
+
+fix_list = pd.read_csv("codes_plus_minus.csv")
+fix_list = fix_list.set_index("code")
+fix_dict = {key : fix_list.loc[key, "sign"] for key in fix_list.index}
+del fix_list
+
+# ==== no blows, fix +-, (split) ====
+if to_do_list["fix"]:
+    drop_fix_table(year, name)
+
+    create_fix_table(year, name)
+    gen_fix_table(year, codes, fix_dict, name)
+    # gen_fix_table_split(year, codes, fix_dict, name)
+    vacuum_full_table(f"{name}_{year}_fix")
+
+# ============= koefs =============
+if to_do_list["koefs"]:
+    if not os.path.isdir("koefs"):
+        os.mkdir("koefs")
+
+    codes_split = get_split_codes(year)
+
+    koefs = gen_koefs_csv(year, codes_split, main_code, name)
+
+# ======== clean - no main_code =======
+if to_do_list["clean"]:
+    drop_clean_table(year, name)
+    if not to_do_list["koefs"]:
+        codes_split = get_split_codes(year)
+        koefs = pd.read_csv(f"koefs/{name}_c{main_code}_MNK_factors_y{year}.csv")
+
+    create_clean_table(year, name)
+    gen_clean_table(year, main_code, codes_split, koefs, name)
+    vacuum_full_table(f"{name}_{year}_clean")
+
+# ========= corrs and counts =======
+if to_do_list["corrs"]:
+    if not os.path.isdir("corrs"):
+        os.mkdir("corrs")
+
+    gen_corrs_csv(year, codes, name)
+
+print(" Drop tables ".center(60, "="))
+for key in drop_tables_at_end:
+    if drop_tables_at_end[key]:
+        key = "" if key == "pure" else key
+        table = f"{name}_{year}_{key}"
+        table = table.rstrip("_")
+        drop_table(table)
+
+print("ALL DONE".center(60))
