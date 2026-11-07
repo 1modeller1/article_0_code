@@ -134,6 +134,6 @@ def gen_koefs_csv (year : int, codes, main_code, name, name_year_parm = None):
     print("")
     df = pd.DataFrame(matrix)
     df.to_csv(folder + '/' + file_name)
-    cur.close()
-    connection.close()
+    # cur.close()
+    # connection.close()
     return df

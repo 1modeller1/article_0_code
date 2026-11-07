@@ -33,10 +33,10 @@ cur = connection.cursor()
 
 code = 1150
 data = "data_clean"
-table = "fin_2020_clean"
+table = "fin_01_2020_clean"
 # table = "fin_2020_no_blows_split_clean"
 
-koefs = pd.read_csv("../koefs/fin_split_c1600p_MNK_factors_y2020.csv")
+koefs = pd.read_csv("../koefs/fin_01_c1600_MNK_factors_y2020.csv")
 koefs = koefs.set_index("code")
 koef_a_p, koef_a_m = 0, 0
 # koef_a_p = koefs.loc[str(code) + 'p', "a"]
@@ -141,5 +141,5 @@ ax[1].set_ylabel("log(1/dx)")
 fig.suptitle(r"Распределение остатков по счету $\bf{c%s}$ (c%s - b * c1600)" % (code, code))
 # fig.suptitle(r"Распределение остатков по счету $\bf{c%s}$ (c%s - b * c1600 - a)    $\bf{[split]}$" % (code, code))
 plt.tight_layout()
-# plt.savefig("two_graphs_log_1150.png", dpi=150)
-plt.show()
+plt.savefig("two_graphs_okv_01_c1150.png", dpi=150)
+# plt.show()

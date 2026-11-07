@@ -67,6 +67,6 @@ def gen_corrs_csv (year, codes, name):
     export_csv(matrix_corr, file_name_corr)
     export_csv(matrix_count, file_name_count)
     print("")
-    cur.close()
-    connection.close()
+    # cur.close()
+    # connection.close()
 

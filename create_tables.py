@@ -83,7 +83,17 @@ def drop_clean_table(year, name):
     connection.commit()
 
 def drop_table (table):
-    cur.execute(f"""
-    drop table if exists {table};
-    """)
-    connection.commit()
+    # cur.execute(f"""
+    # drop table if exists {table};
+    # """)
+    # connection.commit()
+    connection_v = psycopg2.connect(**db_config)
+    connection_v.autocommit = True
+    cursor_v = connection_v.cursor()
+    try:
+        cursor_v.execute(f"drop table if exists {table}")
+    except Exception as e:
+        print(f"Drop table {table} : {e}")
+    finally:
+        cursor_v.close()
+        connection_v.close()

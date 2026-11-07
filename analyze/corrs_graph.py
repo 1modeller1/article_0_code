@@ -88,4 +88,5 @@ graph_2()
 plt.xticks(np.arange(0, 101, 10), [str(i) + '%' for i in range(0, 101, 10)])
 
 # plt.savefig("Сравнение корреляций в разных секторах.png", dpi=150)
+plt.savefig("три корреляции.png", dpi=150)
 plt.show()

@@ -15,7 +15,7 @@ connection = psycopg2.connect(**db_config)
 cur = connection.cursor()
 
 def update_table (code, year, main_code, koefs, name):
-    b = koefs[koefs["code"] == code]["b"].tolist()[0]
+    b = koefs.loc[code, "b"].tolist()
     cur.execute(f"""
     with tab as (
         select
@@ -73,5 +73,5 @@ def gen_clean_table (year, main_code, codes, koefs, name, name_year_parm = None)
 
         print(f"\r{i} / {len(codes)}", end="")
     print("")
-    cur.close()
-    connection.close()
+    # cur.close()
+    # connection.close()

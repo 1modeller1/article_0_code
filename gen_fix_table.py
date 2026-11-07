@@ -129,5 +129,5 @@ def gen_fix_table (year : int, codes : list, fix_dict : dict[int, str], name):
 
         print(f"\r{i} / {len(codes)}", end="")
     print("")
-    cur.close()
-    connection.close()
+    # cur.close()
+    # connection.close()
